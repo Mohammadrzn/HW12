@@ -1,6 +1,7 @@
 from typing import Optional
 from hashlib import sha256
 import platform
+import sys
 import os
 
 RED = "\033[0;31m"
@@ -155,8 +156,6 @@ class User:
 
         if _new_password1 and _new_password2:
             _user.__password = _new_password1
-
-            # replace edited user with previous
             User.user_registered[_user.id] = _user
             print(f'{GREEN}password change success.{END}')
             return
@@ -205,18 +204,20 @@ class User:
 
 main_menu = {
     '1': 'manager',
-    '2': 'passenger'
+    '2': 'passenger',
+    '0': 'exit'
 }
 user_menu = {
     '1': 'register new user',
     '2': 'login',
-    '0': 'exit'
+    '3': 'main menu'
 }
 _authenticated_menu = {
     '1': 'user information',
     '2': 'edit username and phone',
     '3': 'change password',
-    '4': 'logout'
+    '4': 'by ticket',
+    '5': 'logout'
 }
 
 
@@ -282,40 +283,41 @@ class BankAccount:
         cls.MIN_BALANCE = max(new_amount, 0)
 
 
-def menu():
-    """Function for creating the main menu of app"""
+if __name__ == "__main__":
+    def menu():
+        clear()
+        while True:
+            print(f"{BLUE}============ Welcome to metro app ============\n{END}")
+            print_menu(main_menu)
 
-    clear()
-    if __name__ == "__main__":
-        print(f"\n{BLUE}============ Welcome to metro app ============\n")
+            action = input('\n> ')
 
-        def enter():
-            """Function for login and take"""
+            if action == '0':
+                print('good bye see you soon')
+                sys.exit()
 
-            role = input("Who are you? (Manager/Passenger) ")
-            clear()
-            if role.lower() == "manager":
-                print("Hello sir")
-                # Managers actions will add
-            elif role.lower() == "passenger":
+            _action = main_menu.get(action)
+
+            if _action == 'manager':
+                clear()
+                # manager function
+                print('welcome sir')
+            elif _action == 'passenger':
+                clear()
                 passenger()
             else:
-                print("Please enter a valid role")
-                enter()
+                input(f'> {RED}"invalid input, press Enter to continue..." {END}')
+                clear()
 
-        enter()
-
-
-if __name__ == "__main__":
     def passenger():
         while True:
-            print(f'{BLUE}============ main menu ============\n{END}')
+            print(f'{BLUE}============ passenger menu ============\n{END}')
             print_menu(user_menu)
 
             user_input = input('\n> ')
 
-            if user_input == '0':
-                break
+            if user_input == '3':
+                menu()
 
             op = user_menu.get(user_input)
 
@@ -351,7 +353,7 @@ if __name__ == "__main__":
                         elif _op == 'edit_username_and_phone':
                             _username = input(f'> new username [leave empty for {user.user_name}]: ')
                             _phone_number = input(f'> new phone number: [leave empty for {user.phone_number}]\n'
-                                                  f'  or type {YELLOW}"remove"{END} ' + 'for remove your phone number: ')
+                                                  f' or type {YELLOW}"remove"{END} ' + 'for remove your phone number: ')
                             user.edit_username_and_phone(_username, _phone_number)
                         elif _op:
                             exec(f'user.{_op}()')
