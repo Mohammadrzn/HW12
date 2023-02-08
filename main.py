@@ -52,6 +52,7 @@ class User:
         User.id += 1
         self.id = User.id
         User.user_registered[self.id] = self
+        clear()
         print(f'{self.username} {GREEN}"registered"\n{END}')
 
     @staticmethod
@@ -92,10 +93,11 @@ class User:
         :param phone: str optional from user input
         :return: None
         """
+        clear()
         print(f'{BLUE}========== register new user ==========\n{END}')
         if not username:
-            print(f"{YELLOW}hint: " + "username can't be empty{END}")
             print(f'{RED}Fail.{END}')
+            print(f"{YELLOW}hint: " + f"username can't be empty{END}")
             return
         if not (user := cls.__valid_username(username)):
             print(f'{RED}Fail.{END}')
@@ -117,7 +119,6 @@ class User:
         print(f'{BLUE}========== login ==========\n{END}')
         for __user in User.user_registered.values():
             if _username == __user.username and User.__valid_pass("password", _password) == __user.__password:
-                # _user.id = _user_id
                 return __user
         else:
             clear()
@@ -135,7 +136,6 @@ class User:
         """
         print(f'{BLUE}========== change_password ==========\n{END}')
 
-        # check if password is valid, return sha256(password)
         _old_password = _user.__valid_pass("old_password", _old_password)
         if _old_password != _user.__password:
             print(f'> {RED}"your old password incorrect "{END} ')
@@ -172,7 +172,6 @@ class User:
         :return: None
         """
         print(f'{BLUE}========== edit username and phone ==========\n{END}')
-        # get new username and phone number
         try:
             for user in User.user_registered.values():
                 assert _username != user.username, f'{_username} already taken.'
@@ -180,7 +179,6 @@ class User:
             print(f'{RED}{e}{END}')
             return
 
-        # set new value to user object
         if _username:
             self.username = _username
 
@@ -189,10 +187,7 @@ class User:
         elif _phone_number:
             self.phone_number = _phone_number
 
-        # replace edited user with previous
         User.user_registered[self.id] = self
-
-        # print success message
         print(f'\n{GREEN}username and phone number edit successful.\n')
 
     def __str__(self):
@@ -202,37 +197,140 @@ class User:
         return f'username: {self.username}\nphone: {self.phone_number}\npassword: hashed'
 
 
-main_menu = {
-    '1': 'manager',
-    '2': 'passenger',
-    '0': 'exit'
-}
-user_menu = {
-    '1': 'register new user',
-    '2': 'login',
-    '3': 'main menu'
-}
-_authenticated_menu = {
-    '1': 'user information',
-    '2': 'edit username and phone',
-    '3': 'change password',
-    '4': 'by ticket',
-    '5': 'logout'
-}
+class Manager:
+    registered = {}
+    """
+    Class for creating manager
+    :param registered: a dictionary use as database
+    """
 
+    def __init__(self, full_name: str, password: str, number: str):
+        """
+        :param full_name:str, required
+        :param password:str, minimum length 5 character
+        :param number: str,
+        """
+        self.full_name = full_name
+        self.number = number
+        self.__password = password
+        clear()
+        print(f'{self.full_name} {GREEN}"registered"\n{END}')
 
-def clear():
-    """Function for clearing the terminal, based on the user's OS"""
+    @staticmethod
+    def __valid_pass(name_var: str, password: str):
+        """
+        check password validation and return sha256(password)
+        :param name_var: variable name show in message
+        :param password: user input password
+        :return: str
+        """
+        try:
+            assert len(str(password)) >= 5, f"{name_var} length should be at least 5 characters"
+            return sha256(str(password).encode('utf-8')).hexdigest()
+        except AssertionError as e:
+            print(f'{YELLOW}("Hint:"){END}', e)
 
-    if platform.system() == "Linux":
-        os.system("clear")
-    if platform.system() == "Windows":
-        os.system("cls")
+    @classmethod
+    def register_new_manager(cls, fullname: str, password: str, phone: str) -> None:
+        """
+        if password is valid call Manager class for initiate new manager instance
+        :param fullname: str form user input
+        :param password: str from user input
+        :param phone: str from user input
+        :return: None
+        """
+        print(f'{BLUE}========== register new manager ==========\n{END}')
+        if not fullname:
+            print(f"{YELLOW}hint: " + "full name can't be empty{END}")
+            print(f'{RED}Fail.{END}')
+            return
+        if not (passwd := cls.__valid_pass('password', password)):
+            print(f'{RED}Fail.{END}')
+            return
+        phone = phone
+        cls(fullname, passwd, phone)
 
+    @staticmethod
+    def login(_fullname: str, _password: str) -> None:
+        """
+        if _username and _password in database user authenticated
+        :param _fullname: str from user input
+        :param _password: str from user input
+        :return: user
+        """
+        print(f'{BLUE}========== login ==========\n{END}')
+        for __name in User.user_registered.values():
+            if _fullname == __name.username and Manager.__valid_pass("password", _password) == __name.__password:
+                return __name
+        else:
+            clear()
+            print(f'{RED}full name or password incorrect.{END}')
 
-def print_menu(_menu):
-    for item in _menu:
-        print(f'{item}: {_menu[item]}')
+    @staticmethod
+    def change_password(_manager: 'manager', _old_password: str, _new_password1=None, _new_password2=None):
+        """
+        change password if manager old password and new password1 and password2 is valid
+        :param _manager: user object who want to change password
+        :param _old_password: str from input
+        :param _new_password1: str from input
+        :param _new_password2: str from input
+        :return: None
+        """
+        print(f'{BLUE}========== change_password ==========\n{END}')
+        _old_password = _manager.__valid_pass("old_password", _old_password)
+        if _old_password != _manager.__password:
+            print(f'> {RED}"your old password is incorrect "{END} ')
+
+            _new_password1 = _manager.__valid_pass("new_password1", _new_password1)
+            _new_password2 = _manager.__valid_pass("new_password2", _new_password2)
+
+            if _new_password1 != _new_password2 or not _new_password1 or not _new_password2:
+                input(f'''> {RED}"your new password don't match or empty. press Enter to menu"{END} ''')
+            return
+        if _new_password1 != _new_password2 or not _new_password1 or not _new_password2:
+            input(f'''> {RED}"your new password don't match or empty. press Enter to menu"{END} ''')
+            return
+        _new_password1 = _manager.__valid_pass("new_password1", _new_password1)
+        _new_password2 = _manager.__valid_pass("new_password2", _new_password2)
+        if _new_password1 and _new_password2:
+            _manager.__password = _new_password1
+            User.user_registered[_manager.id] = _manager
+            print(f'{GREEN}password change success.{END}')
+            return
+
+    def manager_information(self):
+        print(f'{BLUE}========== manager information ==========\n{END}')
+        print(self)
+
+    def edit_fullname_and_phone(self, _fullname, _phone_number):
+        """
+        this method edits full name and phone number
+        :param _fullname: str from user input
+        :param _phone_number: str from user input
+        :return: None
+        """
+        print(f'{BLUE}========== edit full name and mobile ==========\n{END}')
+        try:
+            for manager in Manager.registered.values():
+                assert _fullname != manager.username, f'{_fullname} already taken.'
+        except AssertionError as e:
+            print(f'{RED}{e}{END}')
+            return
+
+        if _fullname:
+            self.full_name = _fullname
+        if _phone_number == 'remove':
+            self.number = 'not present'
+        elif _phone_number:
+            self.number = _phone_number
+
+        print(f'\n{GREEN}username and phone number edit successful.\n')
+
+    def __str__(self):
+        return f'username: {self.full_name}\nphone: {self.number}\n'
+
+    def __repr__(self):
+        return f'username: {self.full_name}\nphone: {self.number}\npassword: hashed'
 
 
 class BankAccount:
@@ -283,6 +381,49 @@ class BankAccount:
         cls.MIN_BALANCE = max(new_amount, 0)
 
 
+main_menu = {
+    '1': 'manager',
+    '2': 'passenger',
+    '0': 'exit'
+}
+passenger_menu = {
+    '1': 'register new user',
+    '2': 'login',
+    '3': 'main menu'
+}
+_authenticated_menu = {
+    '1': 'user information',
+    '2': 'edit username and phone',
+    '3': 'change password',
+    '4': 'by ticket',
+    '5': 'logout'
+}
+manager_menu = {
+    '1': 'register new manager',
+    '2': 'login',
+    '3': 'main menu'
+}
+manager_authenticated_menu = {
+    '5': 'logout'
+}
+
+
+def clear():
+    """Function for clearing the terminal, based on the user's OS"""
+
+    if platform.system() == "Linux":
+        os.system("clear")
+    if platform.system() == "Windows":
+        os.system("cls")
+
+
+def print_menu(_menu):
+    """Function for printing the menus"""
+
+    for item in _menu:
+        print(f'{item}: {_menu[item]}')
+
+
 if __name__ == "__main__":
     def menu():
         clear()
@@ -300,8 +441,7 @@ if __name__ == "__main__":
 
             if _action == 'manager':
                 clear()
-                # manager function
-                print('welcome sir')
+                manager()
             elif _action == 'passenger':
                 clear()
                 passenger()
@@ -309,22 +449,78 @@ if __name__ == "__main__":
                 input(f'> {RED}"invalid input, press Enter to continue..." {END}')
                 clear()
 
+    def manager():
+        while True:
+            print(f"{BLUE}============ manager menu ============\n{END}")
+            print_menu(manager_menu)
+
+            action = input('\n> ')
+
+            if action == '3':
+                menu()
+
+            op = manager_menu.get(action)
+
+            if op == 'register new manager':
+                full_name = input("> full_name: ")
+                password = input("> password: ")
+                number = input("> mobile: ")
+                Manager.register_new_manager(full_name, password, number)
+            elif op == 'login':
+                full_name = input("> full_name: ")
+                _password = input("> _password: ")
+                if manager := Manager.login(full_name, _password):
+                    print(f'\n{GREEN}login success.{END}')
+                    print(f'{GREEN}welcome {full_name}\n{END}')
+                    while True:
+                        print(f'{BLUE}============ user authenticated menu ============\n{END}')
+                        print_menu(_authenticated_menu)
+                        _user_input = input('\n> ')
+                        _op = _authenticated_menu.get(_user_input)
+                        if _op:
+                            _op = _op.replace(' ', '_')
+                        if _op == 'logout':
+                            print('good by')
+                            break
+                        elif _op == 'change_password':
+                            old_password = input("> old password [leave empty for exit]: ")
+                            if not old_password:
+                                continue
+                            else:
+                                new_password1 = input("> new password")
+                                new_password2 = input("> repeat password")
+                                User.change_password(manager, old_password, new_password1, new_password2)
+                        elif _op == 'edit_full_name_and_phone':
+                            _username = input(f'> new username [leave empty for {manager.full_name}]: ')
+                            _phone_number = input(f'> new phone number: [leave empty for {manager.phone_number}]\n'
+                                                  f' or type {YELLOW}"remove"{END} ' + 'for remove your phone number: ')
+                            manager.edit_fullname_and_phone(_username, _phone_number)
+                        elif _op:
+                            exec(f'user.{_op}()')
+                        else:
+                            input(f'> {RED}"invalid input, press Enter to continue..." {END}')
+                            clear()
+            else:
+                input(f'> {RED}"invalid input, press Enter to continue..." {END}')
+                clear()
+
+
     def passenger():
         while True:
             print(f'{BLUE}============ passenger menu ============\n{END}')
-            print_menu(user_menu)
+            print_menu(passenger_menu)
 
-            user_input = input('\n> ')
+            action = input('\n> ')
 
-            if user_input == '3':
+            if action == '3':
                 menu()
 
-            op = user_menu.get(user_input)
+            op = passenger_menu.get(action)
 
             if op == 'register new user':
                 username = input("> username: ")
                 password = input("> password: ")
-                phone = input("> phone: ")
+                phone = input("> mobile: ")
                 User.register_new_user(username, password, phone)
             elif op == 'login':
                 username = input("> username: ")
@@ -364,4 +560,4 @@ if __name__ == "__main__":
                 input(f'> {RED}"invalid input, press Enter to continue..." {END}')
                 clear()
 
-menu()
+    menu()
