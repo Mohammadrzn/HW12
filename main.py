@@ -1,6 +1,10 @@
 from typing import Optional
-from hashlib import sha256
+from admin import *
 import platform
+import datetime
+import pickle
+import time
+import uuid
 import sys
 import os
 
@@ -11,22 +15,80 @@ YELLOW = "\033[1;33m"
 END = "\033[0m"
 
 
+logger_ticket = logging.getLogger('metro')
+logger_bank = logging.getLogger('metro')
+logger_trip = logging.getLogger('metro')
+
+
 class Ticket:
-    """Class for creating card object"""
+    """Class for creating tickets and using them"""
 
-    def __init__(self, type_card, exp_date, value=0):
-        self.type_card = type_card
-        self.exp_date = exp_date
-        self.value = value
+    def __init__(self, ticket_type, amount=0, ticket_date=None):
+        """
+        :param ticket_type: single trip, credit & long term
+        :param amount: the amount of credit and long term tickets
+        :param ticket_date: The time when the ticket was purchased
+        """
+        self.ticket_type = ticket_type
+        self.amount = amount
+        self.ticket_serial = str(uuid.uuid4())
+        self.validate = True
+        self.ticket_date = ticket_date
+        self.ticket_use_time = None
+        self.trip = []
+        logger_ticket.info(f'{datetime.date.today()}: Ticket class called ')
 
-    def single_trip(self):
-        pass
+    def expire_ticket(self):
+        if self.ticket_type == "3":
+            self.ticket_date = datetime.date.today() + datetime.timedelta(days=365)
 
-    def credit(self):
-        pass
+    def ticket_charge(self, amount):
+        if self.ticket_type != "1":
+            self.amount += amount
+        return self.amount
 
-    def long_term(self):
-        pass
+    def validate_ticket(self):
+        if self.ticket_type == "1":
+            self.validate = False
+        elif self.ticket_type == "2" and self.amount < 2500:
+            self.validate = False
+        elif self.ticket_type == "3" and self.amount < 2500 and self.ticket_date < datetime.date.today():
+            self.validate = False
+
+    def use_ticket(self):
+        self.ticket_use_time = time.strftime("%H:%M:%S", time.localtime())
+        if self.ticket_type != "1":
+            self.amount = self.amount - 2500
+
+    def save_tickets(self):
+        with open("tickets.pkl", 'ab') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load_tickets():
+        with open("tickets.pkl", 'rb') as file:
+            while True:
+                try:
+                    yield pickle.load(file)
+                except EOFError:
+                    break
+
+    @staticmethod
+    def update_tickets(ticket_info):
+        with open("tickets.pkl", 'wb') as file:
+            for ticket in ticket_info:
+                pickle.dump(ticket, file)
+
+
+class Trip:
+    """Class for creating trips"""
+
+    def __init__(self, cost, start_time, end_time):
+        self.cost = cost
+        self.start_time = start_time
+        self.end_time = end_time
+        self.trip_validate = True
+        logger_trip.info(f'{datetime.datetime.now()}: Trip class called ')
 
 
 class User:
@@ -121,7 +183,6 @@ class User:
             if _username == __user.username and User.__valid_pass("password", _password) == __user.__password:
                 return __user
         else:
-            clear()
             print(f'{RED}username or password incorrect.{END}')
 
     @staticmethod
@@ -197,147 +258,16 @@ class User:
         return f'username: {self.username}\nphone: {self.phone_number}\npassword: hashed'
 
 
-class Manager:
-    registered = {}
-    """
-    Class for creating manager
-    :param registered: a dictionary use as database
-    """
-
-    def __init__(self, full_name: str, password: str, number: str):
-        """
-        :param full_name:str, required
-        :param password:str, minimum length 5 character
-        :param number: str,
-        """
-        self.full_name = full_name
-        self.number = number
-        self.__password = password
-        clear()
-        print(f'{self.full_name} {GREEN}"registered"\n{END}')
-
-    @staticmethod
-    def __valid_pass(name_var: str, password: str):
-        """
-        check password validation and return sha256(password)
-        :param name_var: variable name show in message
-        :param password: user input password
-        :return: str
-        """
-        try:
-            assert len(str(password)) >= 5, f"{name_var} length should be at least 5 characters"
-            return sha256(str(password).encode('utf-8')).hexdigest()
-        except AssertionError as e:
-            print(f'{YELLOW}("Hint:"){END}', e)
-
-    @classmethod
-    def register_new_manager(cls, fullname: str, password: str, phone: str) -> None:
-        """
-        if password is valid call Manager class for initiate new manager instance
-        :param fullname: str form user input
-        :param password: str from user input
-        :param phone: str from user input
-        :return: None
-        """
-        print(f'{BLUE}========== register new manager ==========\n{END}')
-        if not fullname:
-            print(f"{YELLOW}hint: " + "full name can't be empty{END}")
-            print(f'{RED}Fail.{END}')
-            return
-        if not (passwd := cls.__valid_pass('password', password)):
-            print(f'{RED}Fail.{END}')
-            return
-        phone = phone
-        cls(fullname, passwd, phone)
-
-    @staticmethod
-    def login(_fullname: str, _password: str) -> None:
-        """
-        if _username and _password in database user authenticated
-        :param _fullname: str from user input
-        :param _password: str from user input
-        :return: user
-        """
-        print(f'{BLUE}========== login ==========\n{END}')
-        for __name in User.user_registered.values():
-            if _fullname == __name.username and Manager.__valid_pass("password", _password) == __name.__password:
-                return __name
-        else:
-            clear()
-            print(f'{RED}full name or password incorrect.{END}')
-
-    @staticmethod
-    def change_password(_manager: 'manager', _old_password: str, _new_password1=None, _new_password2=None):
-        """
-        change password if manager old password and new password1 and password2 is valid
-        :param _manager: user object who want to change password
-        :param _old_password: str from input
-        :param _new_password1: str from input
-        :param _new_password2: str from input
-        :return: None
-        """
-        print(f'{BLUE}========== change_password ==========\n{END}')
-        _old_password = _manager.__valid_pass("old_password", _old_password)
-        if _old_password != _manager.__password:
-            print(f'> {RED}"your old password is incorrect "{END} ')
-
-            _new_password1 = _manager.__valid_pass("new_password1", _new_password1)
-            _new_password2 = _manager.__valid_pass("new_password2", _new_password2)
-
-            if _new_password1 != _new_password2 or not _new_password1 or not _new_password2:
-                input(f'''> {RED}"your new password don't match or empty. press Enter to menu"{END} ''')
-            return
-        if _new_password1 != _new_password2 or not _new_password1 or not _new_password2:
-            input(f'''> {RED}"your new password don't match or empty. press Enter to menu"{END} ''')
-            return
-        _new_password1 = _manager.__valid_pass("new_password1", _new_password1)
-        _new_password2 = _manager.__valid_pass("new_password2", _new_password2)
-        if _new_password1 and _new_password2:
-            _manager.__password = _new_password1
-            User.user_registered[_manager.id] = _manager
-            print(f'{GREEN}password change success.{END}')
-            return
-
-    def manager_information(self):
-        print(f'{BLUE}========== manager information ==========\n{END}')
-        print(self)
-
-    def edit_fullname_and_phone(self, _fullname, _phone_number):
-        """
-        this method edits full name and phone number
-        :param _fullname: str from user input
-        :param _phone_number: str from user input
-        :return: None
-        """
-        print(f'{BLUE}========== edit full name and mobile ==========\n{END}')
-        try:
-            for manager in Manager.registered.values():
-                assert _fullname != manager.username, f'{_fullname} already taken.'
-        except AssertionError as e:
-            print(f'{RED}{e}{END}')
-            return
-
-        if _fullname:
-            self.full_name = _fullname
-        if _phone_number == 'remove':
-            self.number = 'not present'
-        elif _phone_number:
-            self.number = _phone_number
-
-        print(f'\n{GREEN}username and phone number edit successful.\n')
-
-    def __str__(self):
-        return f'username: {self.full_name}\nphone: {self.number}\n'
-
-    def __repr__(self):
-        return f'username: {self.full_name}\nphone: {self.number}\npassword: hashed'
-
-
 class BankAccount:
-    """Class for creating bank account using it"""
 
     WAGE_AMOUNT = 600
     MIN_BALANCE = 10000
+
+    """
+    Class for creating bank account using it
+    :param WAGE_AMOUNT: Wage of some actions
+    :param MIN_BALANCE: The minimum amount of account
+    """
 
     class MinBalanceError(Exception):
         pass
@@ -403,7 +333,7 @@ manager_menu = {
     '2': 'login',
     '3': 'main menu'
 }
-manager_authenticated_menu = {
+control_panel = {
     '5': 'logout'
 }
 
@@ -428,6 +358,7 @@ if __name__ == "__main__":
     def menu():
         clear()
         while True:
+            clear()
             print(f"{BLUE}============ Welcome to metro app ============\n{END}")
             print_menu(main_menu)
 
@@ -462,25 +393,26 @@ if __name__ == "__main__":
             op = manager_menu.get(action)
 
             if op == 'register new manager':
-                full_name = input("> full_name: ")
+                fullname = input("> full_name: ")
                 password = input("> password: ")
                 number = input("> mobile: ")
-                Manager.register_new_manager(full_name, password, number)
+                Manager.register_new_manager(fullname, password, number)
             elif op == 'login':
-                full_name = input("> full_name: ")
+                fullname = input("> full_name: ")
                 _password = input("> _password: ")
-                if manager := Manager.login(full_name, _password):
+                if manager := Manager.login(fullname, _password):
                     print(f'\n{GREEN}login success.{END}')
-                    print(f'{GREEN}welcome {full_name}\n{END}')
+                    print(f'{GREEN}welcome {fullname}\n{END}')
                     while True:
-                        print(f'{BLUE}============ user authenticated menu ============\n{END}')
-                        print_menu(_authenticated_menu)
+                        print(f'{BLUE}============ control panel ============\n{END}')
+                        print_menu(control_panel)
                         _user_input = input('\n> ')
-                        _op = _authenticated_menu.get(_user_input)
+                        _op = control_panel.get(_user_input)
                         if _op:
                             _op = _op.replace(' ', '_')
                         if _op == 'logout':
-                            print('good by')
+                            clear()
+                            print('good bye')
                             break
                         elif _op == 'change_password':
                             old_password = input("> old password [leave empty for exit]: ")
@@ -559,5 +491,6 @@ if __name__ == "__main__":
             else:
                 input(f'> {RED}"invalid input, press Enter to continue..." {END}')
                 clear()
+
 
     menu()
